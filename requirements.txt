@@ -4,3 +4,4 @@ celery
 redis
 pydantic
 requests
+flower

@@ -15,10 +15,11 @@ The industry-standard solution is the **Asynchronous Task Queue Pattern**.
 ### Diagram
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as Browser UI
     participant API as FastAPI Server
     participant Redis as Redis Broker
     participant Worker as Celery Worker
+    participant Flower as Flower Monitor
 
     Client->>API: POST /tasks (payload)
     API->>Redis: Enqueue Task
@@ -27,19 +28,45 @@ sequenceDiagram
     
     loop Async Processing
         Worker->>Redis: Pop Task
-        Worker->>Worker: Process (Heavy Compute/DB)
-        Worker->>Redis: Update Result/Status
+        Worker->>Redis: Update State (PROGRESS: 10%)
+        Redis-->>Flower: Event: task-progress
+        Worker->>Redis: Update State (PROGRESS: 20%)
+        Redis-->>Flower: Event: task-progress
+        Worker->>Worker: Process...
+        Worker->>Redis: Update Result (SUCCESS)
+        Redis-->>Flower: Event: task-succeeded
     end
 
-    loop Polling
+    loop Polling (1s interval)
         Client->>API: GET /tasks/{task_id}
         API->>Redis: Check Status
-        Redis-->>API: Status (PENDING/SUCCESS)
+        Redis-->>API: Status (PROGRESS/SUCCESS)
         API-->>Client: Status Response
+        Client->>Client: Update Progress Bar
     end
 ```
 
-## 2. Best Practices
+## 2. New Features Implementation
+
+### HTML Frontend
+- **Location**: `app/static/index.html`
+- **Features**:
+  - Task submission with custom duration.
+  - **Real-time Progress Bar**: Visualizes the `PROGRESS` state updates.
+  - **Persistence**: Uses `localStorage` to save task history across reloads.
+  - **Details View**: Inspect full JSON request/response payloads.
+
+### Monitoring (Flower)
+- **URL**: `http://localhost:5555`
+- **Configuration**: Runs as a separate service in Docker.
+- **Events**: Worker runs with `-E` flag to emit real-time events for Flower.
+
+### Progress Streaming
+- **Mechanism**: Celery `self.update_state(state='PROGRESS', meta={...})`.
+- **Worker**: Emits progress events every second.
+- **API**: Proxies the `PROGRESS` state and metadata to the client.
+
+## 3. Best Practices
 
 ### Idempotency
 - **Rule**: Ensure tasks can be retried without side effects.

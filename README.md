@@ -11,6 +11,8 @@ This project demonstrates the **Asynchronous Task Queue** pattern, which is the 
 - **FastAPI**: Modern, high-performance web framework.
 - **Celery**: Distributed task queue for background processing.
 - **Redis**: In-memory message broker and result backend.
+- **Flower**: Real-time monitoring dashboard for Celery.
+- **HTML UI**: Built-in frontend with progress bars and history.
 - **Docker Compose**: One-command setup for the entire stack.
 - **Best Practices**: Includes retry logic, pydantic validation, and modular structure.
 
@@ -21,7 +23,10 @@ This project demonstrates the **Asynchronous Task Queue** pattern, which is the 
     ```bash
     docker-compose up --build
     ```
-3.  **Access the API**: Open [http://localhost:8000/docs](http://localhost:8000/docs) to explore the Swagger UI.
+3.  **Access the App**: 
+    - **UI**: [http://localhost:8000](http://localhost:8000)
+    - **Monitoring**: [http://localhost:5555](http://localhost:5555)
+    - **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ## Documentation
 

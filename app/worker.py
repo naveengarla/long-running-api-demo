@@ -10,13 +10,19 @@ celery = Celery(__name__)
 celery.conf.broker_url = CELERY_BROKER_URL
 celery.conf.result_backend = CELERY_RESULT_BACKEND
 
-@celery.task(name="process_vector_data", autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 3})
-def process_vector_data(vector_data: list[float], metadata: dict):
+@celery.task(name="process_vector_data", bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 3})
+def process_vector_data(self, vector_data: list[float], metadata: dict, duration: int = 10):
     """
-    Simulates a long-running vector DB operation.
+    Simulates a long-running vector DB operation with progress updates.
     """
-    # Simulate processing time (e.g., 10 seconds)
-    time.sleep(10)
+    total_steps = duration
+    for i in range(total_steps):
+        time.sleep(1)
+        self.update_state(state='PROGRESS', meta={
+            'current': i + 1,
+            'total': total_steps,
+            'message': f'Processing chunk {i + 1}/{total_steps}...'
+        })
     
     # Simulate a result
     return {
