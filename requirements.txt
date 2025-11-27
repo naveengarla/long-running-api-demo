@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+celery
+redis
+pydantic
+requests
