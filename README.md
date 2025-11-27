@@ -27,6 +27,7 @@ This project demonstrates the **Asynchronous Task Queue** pattern, which is the 
     - **UI**: [http://localhost:8000](http://localhost:8000)
     - **Monitoring**: [http://localhost:5555](http://localhost:5555)
     - **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+```
 ├── app/
 │   ├── main.py       # FastAPI application & endpoints
 │   ├── worker.py     # Celery worker & task definitions
