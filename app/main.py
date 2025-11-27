@@ -4,7 +4,9 @@ from app.worker import process_vector_data
 from app.models import TaskCreate, TaskResponse, TaskStatus
 
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+import asyncio
+import json
 
 app = FastAPI(title="Long Running API Demo")
 
@@ -41,3 +43,32 @@ async def get_task_status(task_id: str):
         response["result"] = task_result.result
         
     return response
+
+@app.get("/tasks/{task_id}/stream")
+async def stream_task_status(task_id: str):
+    """
+    Stream task status updates using Server-Sent Events (SSE).
+    """
+    async def event_generator():
+        while True:
+            task_result = AsyncResult(task_id)
+            
+            data = {
+                "task_id": task_id,
+                "status": task_result.status,
+                "result": None
+            }
+
+            if task_result.status == 'PROGRESS':
+                data["result"] = task_result.result
+            elif task_result.ready():
+                data["result"] = task_result.result
+            
+            yield f"data: {json.dumps(data)}\n\n"
+
+            if task_result.ready():
+                break
+            
+            await asyncio.sleep(1)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

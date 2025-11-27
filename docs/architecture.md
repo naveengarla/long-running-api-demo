@@ -39,10 +39,10 @@ sequenceDiagram
 
     loop Polling (1s interval)
         Client->>API: GET /tasks/{task_id}
-        API->>Redis: Check Status
-        Redis-->>API: Status (PROGRESS/SUCCESS)
-        API-->>Client: Status Response
-        Client->>Client: Update Progress Bar
+        API->>Redis: Fetch current state (written by Worker)
+        Redis-->>API: Status: PROGRESS (e.g. 50%)
+        API-->>Client: JSON: {status: "PROGRESS", result: {current: 5, total: 10}}
+        Client->>Client: Update Progress Bar Width
     end
 ```
 

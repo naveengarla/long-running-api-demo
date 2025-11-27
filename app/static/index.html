@@ -201,10 +201,10 @@
             // Render in reverse order (newest first)
             tasks.slice().reverse().forEach(task => renderTask(task));
 
-            // Resume polling for active tasks
+            // Resume streaming for active tasks
             tasks.forEach(task => {
                 if (task.status !== 'SUCCESS' && task.status !== 'FAILURE') {
-                    pollStatus(task.id);
+                    streamStatus(task.id);
                 }
             });
         }
@@ -238,7 +238,7 @@
                 saveTasks(tasks);
 
                 renderTask(newTask, true); // true = prepend
-                pollStatus(newTask.id);
+                streamStatus(newTask.id);
             } catch (error) {
                 console.error('Error:', error);
                 alert('Failed to submit task');
@@ -282,65 +282,71 @@
             details.classList.toggle('open');
         }
 
-        async function pollStatus(taskId) {
-            const pollInterval = setInterval(async () => {
-                try {
-                    const response = await fetch(`/tasks/${taskId}`);
-                    const data = await response.json();
+        function streamStatus(taskId) {
+            const eventSource = new EventSource(`/tasks/${taskId}/stream`);
 
-                    // Update UI
-                    const taskEl = document.getElementById(`task-${taskId}`);
-                    if (taskEl) {
-                        const badge = taskEl.querySelector('.status-badge');
-                        badge.className = `status-badge status-${data.status}`;
-                        badge.textContent = data.status;
+            eventSource.onmessage = function (event) {
+                const data = JSON.parse(event.data);
 
-                        // Handle Progress
-                        if (data.status === 'PROGRESS' && data.result) {
-                            const progressContainer = document.getElementById(`progress-container-${taskId}`);
-                            const progressBar = document.getElementById(`progress-bar-${taskId}`);
-                            const progressText = document.getElementById(`progress-text-${taskId}`);
+                // Update UI
+                const taskEl = document.getElementById(`task-${taskId}`);
+                if (taskEl) {
+                    const badge = taskEl.querySelector('.status-badge');
+                    badge.className = `status-badge status-${data.status}`;
+                    badge.textContent = data.status;
 
+                    // Handle Progress
+                    if (data.status === 'PROGRESS' && data.result && data.result.current !== undefined) {
+                        const progressContainer = document.getElementById(`progress-container-${taskId}`);
+                        const progressBar = document.getElementById(`progress-bar-${taskId}`);
+                        const progressText = document.getElementById(`progress-text-${taskId}`);
+
+                        progressContainer.style.display = 'block';
+                        progressText.style.display = 'block';
+
+                        const percent = Math.round((data.result.current / data.result.total) * 100);
+                        progressBar.style.width = `${percent}%`;
+                        progressText.textContent = `${data.result.message} (${percent}%)`;
+                    } else if (data.status === 'SUCCESS') {
+                        // Ensure 100% on success
+                        const progressContainer = document.getElementById(`progress-container-${taskId}`);
+                        const progressBar = document.getElementById(`progress-bar-${taskId}`);
+                        const progressText = document.getElementById(`progress-text-${taskId}`);
+
+                        if (progressContainer) {
                             progressContainer.style.display = 'block';
                             progressText.style.display = 'block';
-
-                            const percent = Math.round((data.result.current / data.result.total) * 100);
-                            progressBar.style.width = `${percent}%`;
-                            progressText.textContent = `${data.result.message} (${percent}%)`;
-                        } else if (data.status === 'SUCCESS') {
-                            // Ensure 100% on success
-                            const progressContainer = document.getElementById(`progress-container-${taskId}`);
-                            const progressBar = document.getElementById(`progress-bar-${taskId}`);
-                            if (progressContainer) {
-                                progressContainer.style.display = 'block';
-                                progressBar.style.width = '100%';
-                            }
-                        }
-
-                        // Update Result view
-                        if (data.result) {
-                            document.getElementById(`result-${taskId}`).textContent = JSON.stringify(data.result, null, 2);
+                            progressBar.style.width = '100%';
+                            progressText.textContent = 'Task Completed (100%)';
                         }
                     }
 
-                    // Update LocalStorage
-                    const tasks = getTasks();
-                    const taskIndex = tasks.findIndex(t => t.id === taskId);
-                    if (taskIndex !== -1) {
-                        tasks[taskIndex].status = data.status;
-                        if (data.result) {
-                            tasks[taskIndex].response = data.result;
-                        }
-                        saveTasks(tasks);
+                    // Update Result view
+                    if (data.result) {
+                        document.getElementById(`result-${taskId}`).textContent = JSON.stringify(data.result, null, 2);
                     }
-
-                    if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
-                        clearInterval(pollInterval);
-                    }
-                } catch (error) {
-                    console.error('Polling error:', error);
                 }
-            }, 1000);
+
+                // Update LocalStorage
+                const tasks = getTasks();
+                const taskIndex = tasks.findIndex(t => t.id === taskId);
+                if (taskIndex !== -1) {
+                    tasks[taskIndex].status = data.status;
+                    if (data.result) {
+                        tasks[taskIndex].response = data.result;
+                    }
+                    saveTasks(tasks);
+                }
+
+                if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+                    eventSource.close();
+                }
+            };
+
+            eventSource.onerror = function (err) {
+                // Check if task is already done (server closes connection)
+                eventSource.close();
+            };
         }
     </script>
 </body>
