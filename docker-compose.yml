@@ -2,33 +2,55 @@ version: '3.8'
 
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     ports:
       - "6379:6379"
 
-  web:
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=app
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
     build: .
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       - redis
+      - postgres
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres:5432/app
+      - SYNC_DATABASE_URL=postgresql+psycopg2://user:password@postgres:5432/app
 
   worker:
     build: .
-    command: celery -A app.worker.celery worker --loglevel=info -E
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info -E
     volumes:
       - .:/app
     depends_on:
       - redis
+      - postgres
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres:5432/app
+      - SYNC_DATABASE_URL=postgresql+psycopg2://user:password@postgres:5432/app
 
   flower:
     image: mher/flower
@@ -39,3 +61,6 @@ services:
       - FLOWER_PORT=5555
     depends_on:
       - redis
+
+volumes:
+  postgres_data:

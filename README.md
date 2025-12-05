@@ -8,6 +8,9 @@ This repository serves two purposes:
 1.  **Reference Implementation**: A working demo of the Async Task Queue pattern.
 2.  **Technical Guide**: A resource for teams implementing long-running operations, covering architecture, sizing, and streaming patterns.
 
+> [!IMPORTANT]
+> **Database**: This demo uses **PostgreSQL** via Docker Compose to ensure production-grade concurrency and reliability.
+
 ## ⚠️ The Problem: Long-Running HTTP Requests
 
 Many teams struggle with operations that take **20 minutes to 1 hour** (e.g., generating complex reports, training models, or processing large datasets).
@@ -65,24 +68,28 @@ Detailed documentation for specific architectural concerns:
 | **[Infrastructure Sizing (AKS)](docs/aks_sizing_guide.md)** | **CRITICAL**. How to size pods, node pools, and configure HPA/KEDA for Azure AKS. | Architects, DevOps |
 | **[Real-Time Streaming (SSE)](docs/streaming_guide.md)** | Deep dive into Server-Sent Events for real-time progress updates. | Frontend/Backend Devs |
 | **[Best Practices & Anti-Patterns](docs/best_practices.md)** | **MUST READ**. Claim Check pattern, idempotency, and common pitfalls. | Architects, Developers |
-| **[API Documentation](http://localhost:8000/docs)** | Swagger UI for the implementation endpoints. | Developers |
+| **[API Documentation](http://localhost:8001/docs)** | Swagger UI for the implementation endpoints. | Developers |
 
 ## 🚀 Quick Start
 
 1.  **Prerequisites**: Docker & Docker Compose.
-2.  **Run**: `docker-compose up --build`
+2.  **Run**: `docker-compose up -d --build` (Starts API, Worker, Redis, and Postgres)
 3.  **Explore**:
-    *   **UI**: [http://localhost:8000](http://localhost:8000)
+    *   **UI**: [http://localhost:8001](http://localhost:8001)
+    *   **API Docs**: [http://localhost:8001/docs](http://localhost:8001/docs)
     *   **Flower (Monitor)**: [http://localhost:5555](http://localhost:5555)
 
 ## 📂 Project Structure
 
 ```text
 ├── app/
-│   ├── main.py       # Web Layer (FastAPI) - Handles HTTP & SSE
-│   ├── worker.py     # Worker Layer (Celery) - Executes logic
-│   └── models.py     # Data Layer (Pydantic) - Validation
+│   ├── api/          # API Routes & Endpoints
+│   ├── core/         # Config, DB, Celery Setup
+│   ├── models/       # SQLAlchemy Models
+│   ├── schemas/      # Pydantic Schemas
+│   ├── worker/       # Celery Task Logic
+│   └── main.py       # App Entrypoint
 ├── docs/             # Technical Guides
 ├── docker-compose.yml
-└── verify_flow.py    # E2E Test Script
+└── verify_persistence.py # E2E Test Script
 ```

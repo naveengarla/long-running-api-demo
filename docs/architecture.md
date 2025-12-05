@@ -1,163 +1,141 @@
-# Long Running Operations: Architecture & Best Practices
+# Architecture Overview
 
-## 1. Architecture Guidelines
+## High-Level Design
 
-Handling long-running operations in a synchronous HTTP API (like a standard REST call) is an anti-pattern because it blocks the client, ties up server resources, and is prone to timeouts (e.g., standard 30-60s gateway timeouts).
+The "Long Running API Demo" implements the **Async Task Queue** pattern to handle operations that exceed standard HTTP timeouts. It decouples the **Request** (API) from the **Processing** (Worker) using a Message Broker (Redis) and a Database (PostgreSQL) for persistence.
 
-The industry-standard solution is the **Asynchronous Task Queue Pattern**.
-
-### The Pattern
-1.  **Client** submits a request to the API.
-2.  **API** validates the request, enqueues a message to a **Broker** (e.g., Redis, RabbitMQ), and immediately returns a `202 Accepted` response with a `task_id`.
-3.  **Worker** (separate process) consumes the message from the Broker and executes the heavy computation.
-4.  **Client** polls the API using the `task_id` to check status or receives a webhook callback when done.
-
-### Diagram
 ```mermaid
-sequenceDiagram
-    participant Client as Browser UI
-    participant API as FastAPI Server
-    participant Redis as Redis Broker
-    participant Worker as Celery Worker
-    participant Flower as Flower Monitor
-
-    Client->>API: POST /tasks (payload)
-    API->>Redis: Enqueue Task
-    Redis-->>API: Task ID
-    API-->>Client: 202 Accepted {task_id}
+graph TD
+    Client[Client] -->|POST /tasks| API[FastAPI (Web Layer)]
+    Client -->|GET /tasks/{id}| API
+    Client -->|GET /tasks/{id}/stream| API
     
-    loop Async Processing
-        Worker->>Redis: Pop Task
-        Worker->>Redis: Update State (PROGRESS: 10%)
-        Redis-->>Flower: Event: task-progress
-        Worker->>Redis: Update State (PROGRESS: 20%)
-        Redis-->>Flower: Event: task-progress
-        Worker->>Worker: Process...
-        Worker->>Redis: Update Result (SUCCESS)
-        Redis-->>Flower: Event: task-succeeded
+    API -->|Push Task| Redis[Redis (Broker)]
+    API -->|Read/Write Job Status| DB[(PostgreSQL)]
+    
+    Worker[Celery Worker] -->|Pop Task| Redis
+    Worker -->|Update Status/Logs| DB
+    
+    subgraph "Data Layer"
+        DB
     end
-
-    loop Polling (1s interval)
-        Client->>API: GET /tasks/{task_id}
-        API->>Redis: Fetch current state (written by Worker)
-        Redis-->>API: Status: PROGRESS (e.g. 50%)
-        API-->>Client: JSON: {status: "PROGRESS", result: {current: 5, total: 10}}
-        Client->>Client: Update Progress Bar Width
+    
+    subgraph "Compute Layer"
+        API
+        Worker
     end
 ```
 
-## 2. New Features Implementation
+## Components
 
-### HTML Frontend
-- **Location**: `app/static/index.html`
-- **Features**:
-  - Task submission with custom duration.
-  - **Real-time Progress Bar**: Visualizes the `PROGRESS` state updates.
-  - **Persistence**: Uses `localStorage` to save task history across reloads.
-  - **Details View**: Inspect full JSON request/response payloads.
+### 1. Web Layer (FastAPI)
+*   **Role**: Entry point for all client requests.
+*   **Responsibilities**:
+    *   Input validation (Pydantic).
+    *   Task submission to Celery.
+    *   Persistence of Job metadata to PostgreSQL.
+    *   Querying Job status and Logs.
+    *   Real-time status streaming (SSE).
+*   **Location**: `app/api/`, `app/main.py`
 
-### Monitoring (Flower)
-- **URL**: `http://localhost:5555`
-- **Configuration**: Runs as a separate service in Docker.
-- **Events**: Worker runs with `-E` flag to emit real-time events for Flower.
+### 2. Worker Layer (Celery)
+*   **Role**: Executes background tasks.
+*   **Responsibilities**:
+    *   Processing long-running logic (CPU/IO bound).
+    *   Updating Job status (RUNNING, SUCCESS, FAILED) in PostgreSQL.
+    *   Writing granular progress logs to PostgreSQL.
+    *   Handling retries and cancellations.
+*   **Location**: `app/worker/`
 
-### Progress Streaming
-- **Mechanism**: Celery `self.update_state(state='PROGRESS', meta={...})`.
-- **Worker**: Emits progress events every second.
-- **API**: Proxies the `PROGRESS` state and metadata to the client.
+### 3. Message Broker (Redis)
+*   **Role**: Task queue and transport.
+*   **Responsibilities**:
+    *   Queuing tasks for workers.
+    *   Storing ephemeral task state (Celery backend).
 
-## 3. Best Practices
+### 4. Persistence Layer (PostgreSQL)
+*   **Role**: Durable storage for Jobs and Logs.
+*   **Responsibilities**:
+    *   Storing Job metadata (ID, Status, Inputs, Results).
+    *   Storing audit logs and execution history.
+    *   Ensuring data survives application restarts.
+*   **Location**: Docker Container (`postgres:15-alpine`), `app/models/`
+*   **Note**: We use **PostgreSQL** to support high concurrency and multiple worker replicas, avoiding the file-locking issues of SQLite.
 
-### Idempotency
-- **Rule**: Ensure tasks can be retried without side effects.
-- **Why**: Workers can crash or network issues can cause a task to be delivered twice.
-- **Implementation**: Use unique keys for DB inserts (e.g., `upsert`), or check if a job was already done before starting.
+## Modular Structure
 
-### Retries & Backoff
-- **Rule**: Configure automatic retries for transient failures (e.g., DB connection lost).
-- **Implementation**: Celery supports `autoretry_for` with exponential backoff.
-  ```python
-  @celery.task(autoretry_for=(ConnectionError,), retry_backoff=True)
-  def reliable_task(): ...
-  ```
+The project follows a clean, modular architecture:
 
-### Visibility Timeout
-- **Rule**: Ensure the broker's visibility timeout is larger than the expected task duration.
-- **Why**: If a task takes 5 minutes but timeout is 1 minute, the broker will think the worker died and redeliver the task to another worker, causing duplication.
-
-### Monitoring
-- **Rule**: You must monitor queue depth and worker health.
-- **Tools**: Flower (for Celery), Prometheus/Grafana.
-
-## 3. Constraints
-
-### Message Size
-- **Constraint**: Keep message payloads small (ideally < 1MB).
-- **Reason**: Brokers like Redis/RabbitMQ are optimized for small messages. Large payloads clog the network and increase memory usage.
-- **Solution**: Store large data (e.g., a 10MB CSV file) in Object Storage (S3/GCS) and pass only the **URL/Path** in the task message.
-
-### Task Granularity
-- **Constraint**: Avoid "God Tasks" that run for hours.
-- **Reason**: Hard to restart, blocks worker for too long.
-- **Solution**: Break down large jobs into smaller chunks (Chaining/Chord patterns).
-
-## 4. Current Solution Implementation
-
-We have implemented a **FastAPI + Celery + Redis** architecture.
-
-### Components
-- **FastAPI (`app/main.py`)**: 
-  - Exposes `POST /tasks` to enqueue jobs.
-  - Exposes `GET /tasks/{task_id}` for status checks.
-  - Uses `celery.result.AsyncResult` to query Redis for state.
-- **Celery Worker (`app/worker.py`)**: 
-  - Defines the `process_vector_data` task.
-  - Simulates work with `time.sleep`.
-  - Returns a JSON result upon completion.
-- **Redis**:
-  - Runs in a Docker container.
-  - Acts as both the **Broker** (queue) and **Result Backend** (storage for task status/return values).
-
-### Flow
-1. User sends vector data to `POST /tasks`.
-2. App pushes data to Redis list `celery`.
-3. App returns `task_id`.
-4. Worker pops data, sleeps for 10s, returns result.
-5. User polls `GET /tasks/{task_id}` and eventually sees `SUCCESS`.
-
-## 5. API Documentation
-
-### `POST /tasks`
-Submit a new long-running operation.
-
-**Request Body** (`application/json`):
-```json
-{
-  "vector_data": [0.1, 0.2, 0.3],
-  "metadata": {"source": "user"}
-}
+```text
+app/
+├── api/              # API Layer
+│   ├── endpoints/    # Route handlers (Tasks)
+│   └── router.py     # Main router configuration
+├── core/             # Core Infrastructure
+│   ├── config.py     # Environment settings
+│   ├── database.py   # Database connection logic
+│   └── celery_app.py # Celery app configuration
+├── models/           # Data Models
+│   └── job.py        # SQLAlchemy ORM models
+├── schemas/          # Data Schemas
+│   └── job.py        # Pydantic validation schemas
+├── worker/           # Worker Layer
+│   └── tasks.py      # Celery task implementations
+└── main.py           # Application entry point
 ```
 
-**Response** (`202 Accepted`):
-```json
-{
-  "task_id": "c92f1a3b-...",
-  "status": "Processing"
-}
-```
+## Key Flows
 
-### `GET /tasks/{task_id}`
-Check the status of a submitted task.
+### Job Submission
+1.  Client POSTs to `/tasks`.
+2.  API creates a `PENDING` Job record in SQLite.
+3.  API pushes task to Redis via Celery.
+4.  API returns `202 Accepted` with `task_id`.
 
-**Response** (`200 OK`):
-```json
-{
-  "task_id": "c92f1a3b-...",
-  "status": "SUCCESS",
-  "result": {
-    "processed_vectors": 3,
-    "status": "indexed",
-    "metadata_processed": {"source": "user"}
-  }
-}
-```
+### Job Processing
+1.  Worker pops task from Redis.
+2.  Worker updates Job status to `RUNNING` in SQLite.
+3.  Worker executes logic, writing `JobLog` entries to SQLite.
+4.  On completion, Worker updates status to `SUCCESS` or `FAILED`.
+
+### Job Cancellation
+1.  Client DELETEs `/tasks/{id}`.
+2.  API revokes the Celery task (terminating the worker process).
+3.  API updates Job status to `CANCELLED` in SQLite.
+
+## Reliability & Fault Tolerance
+
+We have implemented specific patterns to ensure the system is resilient to crashes.
+
+### 1. Late Acknowledgement (`acks_late`)
+*   **Problem**: By default, Celery acknowledges (removes) a task from the queue *before* execution starts. If the worker crashes mid-task, the job is lost forever.
+*   **Solution**: We enabled `task_acks_late=True`.
+*   **Effect**: The task remains in Redis until the worker explicitly signals completion. If the connection drops, Redis re-queues the task for another worker.
+
+### 2. Redis Persistence (AOF)
+*   **Problem**: Redis is in-memory. If the Redis container restarts, all pending tasks are wiped out.
+*   **Solution**: We enabled Append Only File (AOF) persistence (`--appendonly yes`).
+*   **Effect**: Redis logs every write operation to disk. On restart, it replays these logs to restore the queue state.
+
+### 3. Idempotency
+*   **Problem**: With `acks_late`, a task might be delivered twice (e.g., worker finishes but crashes *before* sending the ACK).
+*   **Solution**: The worker checks the Database status before starting.
+*   **Effect**:
+    ```python
+    if job.status == "SUCCESS":
+        return result  # Skip processing
+    ```
+    This ensures that re-running a task doesn't corrupt data or waste resources.
+
+## FAQ: State Management
+
+### 1. What if the client loses the Task ID?
+*   **Scenario**: User closes the browser tab or clears cache.
+*   **Recovery**: The client is **stateless**, but the server is **stateful**.
+*   **Solution**: The client should call `GET /tasks` to fetch the history of all submitted jobs from the Database. In a real app, you would filter this by `user_id`.
+*   **Takeaway**: Never rely solely on `localStorage`. Always allow fetching history from the server.
+
+### 2. Source of Truth: DB vs. Celery vs. Flower
+*   **Database (SQLite/Postgres)**: The **Ultimate Source of Truth**. It stores the permanent history, final results, and audit logs. Use this for `GET /tasks/{id}`.
+*   **Redis (Celery Backend)**: The **Hot State**. It stores ephemeral progress updates (e.g., "10% done"). Use this for real-time streaming (`GET /tasks/{id}/stream`).
+*   **Flower**: An **Admin Tool**. Use it for debugging and monitoring cluster health. **Never** build your application logic to depend on Flower's API.

@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.0.4 - PostgreSQL Migration & Stability
+This release migrates the persistence layer to **PostgreSQL** to resolve concurrency and file-locking issues, ensuring a production-grade architecture.
+
+### ⚡ Critical Improvements
+*   **PostgreSQL Migration**: Replaced SQLite with PostgreSQL 15 (via Docker) to prevent `database is locked` errors during concurrent API/Worker access.
+*   **SSE Reliability**: Fixed a mismatch between Celery Task IDs and Database IDs that prevented real-time progress updates.
+*   **Dependencies**: Added `asyncpg` and `psycopg2-binary` drivers.
+
+### 🛠 Configuration Changes
+*   **Ports**: API moved to Port **8001** to avoid local conflicts. Postgres default port mapped to **5433**.
+*   **Docker**: `docker-compose.yml` now orchestrates the full stack (API, Worker, Redis, Postgres).
+
 ## v0.0.3 - Technical Documentation Update
 
 This release focuses on providing comprehensive technical guidance for architects, DevOps engineers, and developers implementing long-running operations.

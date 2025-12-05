@@ -38,4 +38,10 @@ ENV/
 
 # OS
 .DS_Store
-Thumbs.db
+
+# Logs and DB
+*.log
+*.txt
+*.db
+*.db-wal
+*.db-shm

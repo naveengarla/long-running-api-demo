@@ -2,6 +2,13 @@ fastapi
 uvicorn
 celery
 redis
-pydantic
-requests
 flower
+sqlalchemy
+aiosqlite
+asyncpg
+psycopg2-binary
+pydantic
+pydantic-settings
+requests
+tenacity
+pybreaker
