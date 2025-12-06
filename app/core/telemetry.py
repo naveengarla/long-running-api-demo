@@ -29,7 +29,10 @@ def instrument_fastapi(app):
         FastAPIInstrumentor.instrument_app(app)
         # SQLAlchemyInstrumentor().instrument(enable_commenter=True, comment_check_query=True)
 
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
 def instrument_celery(app):
      if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
         CeleryInstrumentor().instrument()
+        RequestsInstrumentor().instrument()
         # SQLAlchemyInstrumentor().instrument(enable_commenter=True, comment_check_query=True)

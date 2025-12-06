@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.0.7 - Feature: Web Scraper Task 🕷️
+
+This release adds a real-world "Web Scraper" task to demonstrate practical long-running operations and external HTTP tracing.
+
+### 🌟 New Features
+*   **Web Scraper Task**: A new background task `scrape_website(url)` that fetches a URL, parses HTML with `BeautifulSoup`, and extracts metadata (Title, H1 count, Link count).
+*   **Observability**: Added `opentelemetry-instrumentation-requests` to automatically trace external HTTP calls made by the worker. Use Jaeger to see the `GET <url>` span!
+*   **UI Updates**: Added a Task Type selector (Vector vs. Scraper) and URL input to the frontend.
+
 ## v0.0.6 - Hotfix: Telemetry Stability 🚑
 
 This hotfix disables `SQLAlchemyInstrumentor` to resolve a critical `greenlet` context error when used with the `asyncpg` driver in FastAPI.

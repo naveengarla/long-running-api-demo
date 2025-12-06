@@ -28,12 +28,19 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(new_job)
 
-    # Trigger Celery Task
-    # Trigger Celery Task
-    task = process_vector_data.apply_async(
-        args=[new_job.id, payload.vector_data, payload.metadata, payload.duration],
-        task_id=new_job.id
-    )
+    # Trigger Celery Task based on Type
+    if payload.task_type == "web_scrape":
+        task = celery_app.send_task(
+            "scrape_website",
+            args=[new_job.id, payload.url],
+            task_id=new_job.id
+        )
+    else:
+        # Default to Vector Processing
+        task = process_vector_data.apply_async(
+            args=[new_job.id, payload.vector_data, payload.metadata, payload.duration],
+            task_id=new_job.id
+        )
 
     return TaskResponse(task_id=new_job.id, status="Processing")
 

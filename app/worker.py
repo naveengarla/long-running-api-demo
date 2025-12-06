@@ -8,6 +8,9 @@ import pybreaker
 from app.core.database import SessionLocal
 from app.models.job import Job, JobLog, JobStatus
 from app.services.mock_external import MockExternalService
+import requests
+from bs4 import BeautifulSoup
+
 from app.core.celery_app import celery_app
 
 # --- Resiliency Configuration ---
@@ -131,3 +134,65 @@ def process_vector_data(self, job_id: str, vector_data: list[float], metadata: d
         "status": "indexed",
         "metadata_processed": metadata
     }
+
+@celery_app.task(name="scrape_website", base=DatabaseTask, bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 3})
+def scrape_website(self, job_id: str, url: str):
+    """
+    Scrapes a website and extracts metadata.
+    """
+    # Update status to RUNNING
+    with SessionLocal() as db:
+        job = db.query(Job).filter(Job.id == job_id).first()
+        if job:
+            job.status = JobStatus.RUNNING.value
+            job.started_at = datetime.datetime.utcnow()
+            db.commit()
+
+    log_to_db(job_id, f"Starting scrape for {url}")
+
+    try:
+        # Simulate some setup time
+        time.sleep(1)
+        self.update_state(state='PROGRESS', meta={'message': 'Connecting to site...', 'job_id': job_id})
+        
+        # 1. Fetch
+        log_to_db(job_id, "Sending HTTP GET Request...")
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        # 2. Parse
+        self.update_state(state='PROGRESS', meta={'message': 'Parsing HTML...', 'job_id': job_id})
+        log_to_db(job_id, "Parsing HTML content...")
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Simulate processing time
+        time.sleep(2)
+        
+        # 3. Extract
+        title = soup.title.string if soup.title else "No Title"
+        description = "No description"
+        meta_desc = soup.find("meta", attrs={"name": "description"})
+        if meta_desc:
+            description = meta_desc.get("content")
+            
+        h1_count = len(soup.find_all('h1'))
+        links = len(soup.find_all('a'))
+        images = len(soup.find_all('img'))
+        
+        result = {
+            "url": url,
+            "title": title,
+            "description": description,
+            "stats": {
+                "h1_tags": h1_count,
+                "links": links,
+                "images": images
+            }
+        }
+        
+        log_to_db(job_id, "Scrape complete successfully.")
+        return result
+
+    except Exception as e:
+        log_to_db(job_id, f"Scrape failed: {str(e)}", level="ERROR")
+        raise e

@@ -165,8 +165,27 @@
     <div class="container">
         <h1>Long Running Task Demo</h1>
         <div class="form-group">
+            <label>Task Type</label>
+            <div style="margin-bottom: 10px;">
+                <input type="radio" id="typeVector" name="taskType" value="vector_processing" checked
+                    onchange="toggleInputs()">
+                <label for="typeVector" style="display:inline; font-weight:normal; margin-right: 15px;">Vector
+                    Processing</label>
+
+                <input type="radio" id="typeScrape" name="taskType" value="web_scrape" onchange="toggleInputs()">
+                <label for="typeScrape" style="display:inline; font-weight:normal;">Web Scraper</label>
+            </div>
+        </div>
+
+        <div class="form-group" id="groupVector">
             <label for="duration">Task Duration (seconds)</label>
             <input type="number" id="duration" value="10" min="1" max="60">
+        </div>
+
+        <div class="form-group" id="groupScrape" style="display:none;">
+            <label for="url">Website URL</label>
+            <input type="text" id="url" value="https://example.com" placeholder="https://example.com"
+                style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
         </div>
         <button onclick="submitTask()">Submit Task</button>
         <button onclick="clearHistory()" class="clear-btn">Clear History</button>
@@ -209,13 +228,33 @@
             });
         }
 
+        function toggleInputs() {
+            const isScrape = document.getElementById('typeScrape').checked;
+            document.getElementById('groupVector').style.display = isScrape ? 'none' : 'block';
+            document.getElementById('groupScrape').style.display = isScrape ? 'block' : 'none';
+        }
+
         async function submitTask() {
-            const duration = parseInt(document.getElementById('duration').value);
-            const payload = {
-                vector_data: [0.1, 0.2, 0.3],
-                metadata: { source: "web_ui", timestamp: new Date().toISOString() },
-                duration: duration
-            };
+            const isScrape = document.getElementById('typeScrape').checked;
+            let payload = {};
+
+            if (isScrape) {
+                const url = document.getElementById('url').value;
+                if (!url) { alert('Please enter a URL'); return; }
+                payload = {
+                    task_type: "web_scrape",
+                    url: url,
+                    metadata: { source: "web_ui", timestamp: new Date().toISOString() }
+                };
+            } else {
+                const duration = parseInt(document.getElementById('duration').value);
+                payload = {
+                    task_type: "vector_processing",
+                    vector_data: [0.1, 0.2, 0.3],
+                    metadata: { source: "web_ui", timestamp: new Date().toISOString() },
+                    duration: duration
+                };
+            }
 
             try {
                 const response = await fetch('/tasks', {

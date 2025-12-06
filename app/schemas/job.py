@@ -10,10 +10,16 @@ class JobStatus(str, Enum):
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
+class TaskType(str, Enum):
+    VECTOR = "vector_processing"
+    SCRAPE = "web_scrape"
+
 class TaskCreate(BaseModel):
-    vector_data: List[float]
+    vector_data: Optional[List[float]] = None
     metadata: dict
     duration: int = 10
+    url: Optional[str] = None
+    task_type: TaskType = TaskType.VECTOR
 
 class TaskResponse(BaseModel):
     task_id: str
