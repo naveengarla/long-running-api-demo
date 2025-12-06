@@ -27,9 +27,9 @@ def init_tracer(service_name: str):
 def instrument_fastapi(app):
     if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
         FastAPIInstrumentor.instrument_app(app)
-        SQLAlchemyInstrumentor().instrument(enable_commenter=True, comment_check_query=True)
+        # SQLAlchemyInstrumentor().instrument(enable_commenter=True, comment_check_query=True)
 
 def instrument_celery(app):
      if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
         CeleryInstrumentor().instrument()
-        SQLAlchemyInstrumentor().instrument(enable_commenter=True, comment_check_query=True)
+        # SQLAlchemyInstrumentor().instrument(enable_commenter=True, comment_check_query=True)

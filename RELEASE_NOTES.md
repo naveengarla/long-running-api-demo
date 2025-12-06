@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.0.6 - Hotfix: Telemetry Stability 🚑
+
+This hotfix disables `SQLAlchemyInstrumentor` to resolve a critical `greenlet` context error when used with the `asyncpg` driver in FastAPI.
+
+### 🐛 Bug Fixes
+*   **Fix 500 Internal Server Error**: Resolved `sqlalchemy.exc.MissingGreenlet` errors in the API by disabling automatic SQLAlchemy tracing. Request tracing (FastAPI) and Worker tracing (Celery) remain active and fully functional.
+
 ## v0.0.5 - Observability & Distributed Tracing 🕵️‍♂️
 
 This release introduces full-stack observability using **OpenTelemetry** and **Jaeger**, allowing developers to visualize and trace requests as they flow through the system (API -> Redis -> Worker -> Database).
