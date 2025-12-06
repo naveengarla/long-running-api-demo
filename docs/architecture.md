@@ -7,8 +7,8 @@ The "Long Running API Demo" implements the **Async Task Queue** pattern to handl
 ```mermaid
 graph TD
     Client[Client] -->|POST /tasks| API["FastAPI (Web Layer)"]
-    Client -->|GET /tasks/{id}| API
-    Client -->|GET /tasks/{id}/stream| API
+    Client -->|GET /tasks/:id| API
+    Client -->|GET /tasks/:id/stream| API
     
     API -->|Push Task| Redis["Redis (Broker)"]
     API -->|Read/Write Job Status| DB[("PostgreSQL")]
