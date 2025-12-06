@@ -19,7 +19,7 @@ graph TD
     
     API -.->|Trace| Jaeger["Jaeger (Tracing)"]
     Worker -.->|Trace| Jaeger
-    External -.->|Trace (Client)| Jaeger
+    External -.->|Trace - Client| Jaeger
     
     subgraph "Data Layer"
         DB
