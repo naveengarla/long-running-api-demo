@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.0.8 - Improvement: Scraper Reliability & Error Handling 🛡️
+
+This release improves the robustness of the Web Scraper task, specifically addressing issues with sites like Wikipedia.
+
+### 🛠 Improvements
+*   **User-Agent Header**: Added a browser-like `User-Agent` header to `scrape_website` to prevent 403 Forbidden errors from sites with strict bot protection (e.g., Wikipedia).
+*   **Error Propagation**: Enhanced exception handling in the worker to explicitly update the task status to `FAILURE` in the database, ensuring errors are correctly reported to the UI instead of getting stuck in `PROGRESS`.
+
 ## v0.0.7 - Feature: Web Scraper Task 🕷️
 
 This release adds a real-world "Web Scraper" task to demonstrate practical long-running operations and external HTTP tracing.

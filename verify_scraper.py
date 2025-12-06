@@ -6,14 +6,13 @@ import sys
 BASE_URL = "http://localhost:8001"
 
 def run_verification():
-    print(f"Submitting Web Scraper task to {BASE_URL}...")
+    print(f"Submitting Web Scraper task to {BASE_URL} for Wikipedia...")
     
     payload = {
         "task_type": "web_scrape",
-        "url": "https://example.com",
+        "url": "https://en.wikipedia.org/wiki/India",
         "metadata": {"source": "verification_script"},
-        "duration": 5 # Ignored by scraper but required by schema validation if not fully optional in DB model? 
-        # Schema has default, but let's send it to be safe.
+        "duration": 5 
     }
     
     try:
@@ -42,6 +41,12 @@ def run_verification():
                 break
             elif status in ["FAILED", "CANCELLED"]:
                 print(f("\nTask Failed/Cancelled with status: {status}"))
+                # Ideally we want to see the error log or message here
+                print("Logs:")
+                for log in status_data.get("logs", []):
+                    print(f"[{log['level']}] {log['message']}")
+                
+                # If it failed, that's okay IF it is a legitimate failure, but for Wikipedia we expect SUCCESS now.
                 sys.exit(1)
             
             time.sleep(2)

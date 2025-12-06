@@ -16,8 +16,6 @@ from app.core.celery_app import celery_app
 # --- Resiliency Configuration ---
 
 # Circuit Breaker: Trip after 5 consecutive failures, reset timeout 60s
-# Excludes ConnectionError from tripping? No, usually ConnectionError IS what trips it.
-# We will wrap the service call with this breaker.
 service_breaker = pybreaker.CircuitBreaker(state_storage=pybreaker.CircuitMemoryStorage(pybreaker.STATE_CLOSED), fail_max=5, reset_timeout=60)
 
 mock_service = MockExternalService(failure_rate=0.3) # 30% failure chance
@@ -82,7 +80,6 @@ def process_vector_data(self, job_id: str, vector_data: list[float], metadata: d
     """
     Simulates a long-running vector DB operation with progress updates and persistence.
     """
-    # Update status to RUNNING
     with SessionLocal() as db:
         job = db.query(Job).filter(Job.id == job_id).first()
         if job:
@@ -94,10 +91,6 @@ def process_vector_data(self, job_id: str, vector_data: list[float], metadata: d
 
     total_steps = duration
     for i in range(total_steps):
-        # Check if cancelled (optional optimization, Celery revoke handles the kill)
-        # But updating DB status if revoked is handled by Celery state, 
-        # though we might want to check DB status here if we implement soft cancellation.
-        
         time.sleep(1)
         
         message = f'Processing chunk {i + 1}/{total_steps}...'
@@ -108,14 +101,8 @@ def process_vector_data(self, job_id: str, vector_data: list[float], metadata: d
             'job_id': job_id
         })
         
-        # Log progress every 20% or so to avoid spamming DB
-        
-        # Log progress every 20% or so to avoid spamming DB
         if i % max(1, total_steps // 5) == 0:
             log_to_db(job_id, message)
-            
-            # --- Demonstrate Resiliency ---
-            # Every checkpoint, try to call the external service
             try:
                 result = call_external_service_safely(vector_data, metadata)
                 log_to_db(job_id, f"External Service Success: {result['external_id']}")
@@ -123,12 +110,9 @@ def process_vector_data(self, job_id: str, vector_data: list[float], metadata: d
                 log_to_db(job_id, "External Service Skipped (Circuit Breaker OPEN)", level="WARNING")
             except Exception as e:
                 log_to_db(job_id, f"External Service Failed after retries: {str(e)}", level="ERROR")
-                # We might choose to NOT fail the whole task, or we might.
-                # For demo, let's keep going but log error.
     
     log_to_db(job_id, "Task processing complete.")
 
-    # Simulate a result
     return {
         "processed_vectors": len(vector_data),
         "status": "indexed",
@@ -140,7 +124,6 @@ def scrape_website(self, job_id: str, url: str):
     """
     Scrapes a website and extracts metadata.
     """
-    # Update status to RUNNING
     with SessionLocal() as db:
         job = db.query(Job).filter(Job.id == job_id).first()
         if job:
@@ -157,7 +140,10 @@ def scrape_website(self, job_id: str, url: str):
         
         # 1. Fetch
         log_to_db(job_id, "Sending HTTP GET Request...")
-        response = requests.get(url, timeout=10)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
         # 2. Parse
@@ -194,5 +180,12 @@ def scrape_website(self, job_id: str, url: str):
         return result
 
     except Exception as e:
-        log_to_db(job_id, f"Scrape failed: {str(e)}", level="ERROR")
+        error_msg = f"Scrape failed: {str(e)}"
+        log_to_db(job_id, error_msg, level="ERROR")
+        # Explicitly fail the task state so the listener catches it
+        self.update_state(state='FAILURE', meta={
+            'exc_type': type(e).__name__,
+            'exc_message': str(e),
+            'job_id': job_id
+        })
         raise e
