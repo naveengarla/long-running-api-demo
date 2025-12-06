@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.0.5 - Observability & Distributed Tracing 🕵️‍♂️
+
+This release introduces full-stack observability using **OpenTelemetry** and **Jaeger**, allowing developers to visualize and trace requests as they flow through the system (API -> Redis -> Worker -> Database).
+
+### 🌟 New Capabilities
+*   **Distributed Tracing**: Integrated **Jaeger** (v1.53) to visualize request lifecycles.
+*   **Instrumentation**: Added OpenTelemetry instrumentation for:
+    *   **FastAPI**: Trace HTTP requests and latency.
+    *   **Celery**: Trace background task execution and queuing time.
+    *   **SQLAlchemy**: Trace database queries.
+    *   **Redis**: Trace broker interactions.
+
+### 🏗 Infrastructure
+*   **Jaeger Service**: Added `jaeger` container to `docker-compose.yml`, exposing the UI on port **16686**.
+*   **Telemetry Utility**: Added `app/core/telemetry.py` to simplify OTLP configuration.
+
 ## v0.0.4 - PostgreSQL Migration & Improved Stability 🐘
 
 This major release transitions the application's persistence layer from SQLite to **PostgreSQL**, addressing critical scalability and concurrency limitations. It also includes significant stability improvements for Server-Sent Events (SSE) and schema validation.

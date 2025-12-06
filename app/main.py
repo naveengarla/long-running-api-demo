@@ -7,7 +7,15 @@ from app.api.router import api_router
 # Import models to ensure they are registered with Base.metadata before create_all
 import app.models.job
 
+from app.core.telemetry import init_tracer, instrument_fastapi
+
+# Initialize Tracer
+init_tracer("api-service")
+
 app = FastAPI(title=settings.PROJECT_NAME)
+
+# Instrument FastAPI
+instrument_fastapi(app)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 

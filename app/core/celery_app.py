@@ -1,5 +1,13 @@
 from celery import Celery
 from app.core.config import settings
+from app.core.telemetry import init_tracer, instrument_celery
+import os
+
+# Initialize Tracer for Worker if this file is loaded by the worker process
+# A simple heuristic: check if we are in a worker context or if env var is set
+if os.getenv("OTEL_SERVICE_NAME") == "worker-service":
+    init_tracer("worker-service")
+    instrument_celery(None) # app argument is optional for auto-instrumentation
 
 celery_app = Celery(
     "worker", 

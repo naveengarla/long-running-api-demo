@@ -22,6 +22,15 @@ services:
       timeout: 5s
       retries: 5
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "16686:16686" # Web UI
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
   api:
     build: .
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -37,6 +46,8 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://user:password@postgres:5432/app
       - SYNC_DATABASE_URL=postgresql+psycopg2://user:password@postgres:5432/app
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=api-service
 
   worker:
     build: .
@@ -51,6 +62,8 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://user:password@postgres:5432/app
       - SYNC_DATABASE_URL=postgresql+psycopg2://user:password@postgres:5432/app
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=worker-service
 
   flower:
     image: mher/flower

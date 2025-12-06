@@ -16,8 +16,15 @@ graph TD
     Worker[Celery Worker] -->|Pop Task| Redis
     Worker -->|Update Status/Logs| DB
     
+    API -.->|Trace| Jaeger[Jaeger (Tracing)]
+    Worker -.->|Trace| Jaeger
+    
     subgraph "Data Layer"
         DB
+    end
+
+    subgraph "Observability"
+        Jaeger
     end
     
     subgraph "Compute Layer"
@@ -61,6 +68,13 @@ graph TD
     *   Ensuring data survives application restarts.
 *   **Location**: Docker Container (`postgres:15-alpine`), `app/models/`
 *   **Note**: We use **PostgreSQL** to support high concurrency and multiple worker replicas, avoiding the file-locking issues of SQLite.
+
+### 5. Observability (OpenTelemetry & Jaeger)
+*   **Role**: Distributed Tracing.
+*   **Responsibilities**:
+    *   Visualizing the full request lifecycle (`API -> Redis -> Worker -> DB`).
+    *   Identifying performance bottlenecks and errors.
+*   **Location**: Docker Container (`jaegertracing/all-in-one`), `app/core/telemetry.py`
 
 ## Modular Structure
 

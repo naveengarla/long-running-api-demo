@@ -77,6 +77,7 @@ Detailed documentation for specific architectural concerns:
 3.  **Explore**:
     *   **UI**: [http://localhost:8001](http://localhost:8001)
     *   **API Docs**: [http://localhost:8001/docs](http://localhost:8001/docs)
+    *   **Jaeger (Tracing)**: [http://localhost:16686](http://localhost:16686)
     *   **Flower (Monitor)**: [http://localhost:5555](http://localhost:5555)
 
 ## 📂 Project Structure
