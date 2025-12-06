@@ -6,18 +6,18 @@ The "Long Running API Demo" implements the **Async Task Queue** pattern to handl
 
 ```mermaid
 graph TD
-    Client[Client] -->|POST /tasks| API[FastAPI (Web Layer)]
+    Client[Client] -->|POST /tasks| API["FastAPI (Web Layer)"]
     Client -->|GET /tasks/{id}| API
     Client -->|GET /tasks/{id}/stream| API
     
-    API -->|Push Task| Redis[Redis (Broker)]
-    API -->|Read/Write Job Status| DB[(PostgreSQL)]
+    API -->|Push Task| Redis["Redis (Broker)"]
+    API -->|Read/Write Job Status| DB[("PostgreSQL")]
     
-    Worker[Celery Worker] -->|Pop Task| Redis
+    Worker["Celery Worker"] -->|Pop Task| Redis
     Worker -->|Update Status/Logs| DB
-    Worker -->|GET (Scrape)| External[External Website]
+    Worker -->|GET (Scrape)| External["External Website"]
     
-    API -.->|Trace| Jaeger[Jaeger (Tracing)]
+    API -.->|Trace| Jaeger["Jaeger (Tracing)"]
     Worker -.->|Trace| Jaeger
     External -.->|Trace (Client)| Jaeger
     
