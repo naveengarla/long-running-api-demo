@@ -1,16 +1,35 @@
 # Release Notes
 
-## v0.0.4 - PostgreSQL Migration & Stability
-This release migrates the persistence layer to **PostgreSQL** to resolve concurrency and file-locking issues, ensuring a production-grade architecture.
+## v0.0.4 - PostgreSQL Migration & Improved Stability 🐘
 
-### ⚡ Critical Improvements
-*   **PostgreSQL Migration**: Replaced SQLite with PostgreSQL 15 (via Docker) to prevent `database is locked` errors during concurrent API/Worker access.
-*   **SSE Reliability**: Fixed a mismatch between Celery Task IDs and Database IDs that prevented real-time progress updates.
-*   **Dependencies**: Added `asyncpg` and `psycopg2-binary` drivers.
+This major release transitions the application's persistence layer from SQLite to **PostgreSQL**, addressing critical scalability and concurrency limitations. It also includes significant stability improvements for Server-Sent Events (SSE) and schema validation.
 
-### 🛠 Configuration Changes
-*   **Ports**: API moved to Port **8001** to avoid local conflicts. Postgres default port mapped to **5433**.
-*   **Docker**: `docker-compose.yml` now orchestrates the full stack (API, Worker, Redis, Postgres).
+### 🌟 New Capabilities
+*   **Production-Grade Database**: Switched from SQLite to **PostgreSQL 15** running in Docker. This enables:
+    *   **High Concurrency**: Multiple workers can now process tasks simultaneously without `database is locked` errors.
+    *   **Row-Level Locking**: Improved data integrity during high-throughput operations.
+    *   **Scalability**: The database is now decoupled from the application file system, allowing for independent scaling.
+
+### 🐛 Critical Bug Fixes
+*   **SSE Real-Time Updates**:
+    *   **Fixed**: Resolved a critical issue where the UI progress bar remained stuck at 0%.
+    *   **Root Cause**: Mismatch between Celery's auto-generated Task ID and the application's Database ID.
+    *   **Resolution**: Enforced ID synchronization (`task_id=job.id`) and updated endpoints to use `celery_app.AsyncResult` for correct Redis backend lookups.
+*   **API 500 Errors**:
+    *   **Fixed**: Resolved `ResponseValidationError` when fetching task status.
+    *   **Root Cause**: Pydantic schema field `task_id` did not match SQLAlchemy model field `id`.
+    *   **Resolution**: Added `serialization_alias` to `TaskStatusResponse` and correctly mapped eager-loaded relationships.
+
+### 🏗 Infrastructure & Developer Experience
+*   **Unified Docker Stack**: Updated `docker-compose.yml` to orchestrate the entire platform (API, Worker, Redis, Postgres) with a single command: `docker-compose up -d`.
+*   **Port Reconfiguration**:
+    *   **API**: Moved to port **8001** (default) to prevent conflicts with other local services.
+    *   **PostgreSQL**: Exposed on port **5433** to avoid clashes with local Postgres instances.
+*   **Verification Scripts**: Added `verify_sse.py` and updated `verify_persistence.py` to support the new port configuration and end-to-end testing flows.
+
+### 🔧 Internal Improvements
+*   **Dependency Updates**: Added `asyncpg` (for high-performance async DB access) and `psycopg2-binary` (for robust synchronous Celery worker access).
+*   **Configuration Management**: Centralized database connection strings in `app/core/config.py` to support both Sync and Async drivers easily.
 
 ## v0.0.3 - Technical Documentation Update
 
