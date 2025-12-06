@@ -66,19 +66,6 @@ sequenceDiagram
     end
 ```
 
-## 📖 Technical Guides
-
-Detailed documentation for specific architectural concerns:
-
-| Guide | Description | Target Audience |
-| :--- | :--- | :--- |
-| **[Infrastructure Sizing (AKS)](docs/aks_sizing_guide.md)** | **CRITICAL**. How to size pods, node pools, and configure HPA/KEDA for Azure AKS. | Architects, DevOps |
-│   ├── core/         # Config, DB, Celery Setup
-│   ├── models/       # SQLAlchemy Models
-│   ├── schemas/      # Pydantic Schemas
-│   ├── worker/       # Celery Task Logic
-│   └── main.py       # App Entrypoint
-├── docs/             # Technical Guides
 ├── docker-compose.yml
 ├── verify_persistence.py # E2E Test Script (Vector)
 └── verify_scraper.py     # E2E Test Script (Scraper)
