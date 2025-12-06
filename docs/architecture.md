@@ -15,7 +15,7 @@ graph TD
     
     Worker["Celery Worker"] -->|Pop Task| Redis
     Worker -->|Update Status/Logs| DB
-    Worker -->|GET (Scrape)| External["External Website"]
+    Worker -->|GET - Scrape| External["External Website"]
     
     API -.->|Trace| Jaeger["Jaeger (Tracing)"]
     Worker -.->|Trace| Jaeger
