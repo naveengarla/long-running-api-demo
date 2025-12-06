@@ -1,3 +1,11 @@
+"""
+Celery Worker Module.
+Contains the actual business logic for long-running tasks.
+Implements:
+1. Database Persistence (via DatabaseTask base class)
+2. Resiliency Patterns (Circuit Breaker, Retries)
+3. Observability (OpenTelemetry instrumentation)
+"""
 import os
 import time
 import datetime
@@ -34,6 +42,11 @@ def call_external_service_safely(data: list, metadata: dict):
     return mock_service.perform_risky_operation(data, metadata)
 
 class DatabaseTask(Task):
+    """
+    Custom Celery Task base class.
+    Automatically updates the Job status in PostgreSQL upon success, failure, or retry.
+    This ensures the Database is always the "Source of Truth" for job status.
+    """
     def on_success(self, retval, task_id, args, kwargs):
         job_id = kwargs.get('job_id') or (args[0] if args else None)
         if job_id:

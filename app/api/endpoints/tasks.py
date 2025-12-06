@@ -1,3 +1,10 @@
+"""
+Task Endpoints.
+Handles the submission, monitoring, and cancellation of background tasks.
+Follows the Async Task Queue pattern:
+1. Submit Task -> Return 202 Accepted + Task ID
+2. Poll/Stream Status -> Return JSON/SSE
+"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select

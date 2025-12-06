@@ -1,3 +1,8 @@
+"""
+Main Application Entrypoint.
+Initializes the FastAPI application, registers routers, and sets up OpenTelemetry instrumentation.
+"""
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,12 +14,13 @@ import app.models.job
 
 from app.core.telemetry import init_tracer, instrument_fastapi
 
-# Initialize Tracer
+# Initialize OpenTelemetry Tracer for the API Service
+# This ensures all incoming HTTP requests are traced and sent to Jaeger.
 init_tracer("api-service")
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-# Instrument FastAPI
+# Instrument FastAPI: Automatically generates spans for every request.
 instrument_fastapi(app)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

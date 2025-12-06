@@ -22,7 +22,8 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    task_acks_late=True,
-    task_reject_on_worker_lost=True,
-    broker_transport_options={"visibility_timeout": 3600}, # 1 hour visibility timeout
+    # Reliability Settings:
+    task_acks_late=True, # Task is ACKed only AFTER execution. Prevents data loss if worker crashes.
+    task_reject_on_worker_lost=True, # Re-queue task if worker process is killed abruptly (OOM).
+    broker_transport_options={"visibility_timeout": 3600}, # 1 hour visibility timeout. If worker doesn't ACK in 1h, task is re-queued.
 )

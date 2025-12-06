@@ -1,3 +1,7 @@
+"""
+Observability Configuration.
+Initializes OpenTelemetry tracing and exports traces to Jaeger (via OTLP).
+"""
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -9,6 +13,10 @@ from opentelemetry.instrumentation.celery import CeleryInstrumentor
 import os
 
 def init_tracer(service_name: str):
+    """
+    Sets up the OpenTelemetry TracerProvider and adds an OTLP/gRPC exporter.
+    This enables sending traces to the Jaeger collector defined in OTEL_EXPORTER_OTLP_ENDPOINT.
+    """
     # check if OTEL_EXPORTER_OTLP_ENDPOINT is set
     if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
         print("OTEL_EXPORTER_OTLP_ENDPOINT not set, skipping telemetry.")
