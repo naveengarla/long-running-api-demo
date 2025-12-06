@@ -15,9 +15,11 @@ graph TD
     
     Worker[Celery Worker] -->|Pop Task| Redis
     Worker -->|Update Status/Logs| DB
+    Worker -->|GET (Scrape)| External[External Website]
     
     API -.->|Trace| Jaeger[Jaeger (Tracing)]
     Worker -.->|Trace| Jaeger
+    External -.->|Trace (Client)| Jaeger
     
     subgraph "Data Layer"
         DB
@@ -49,6 +51,7 @@ graph TD
 *   **Role**: Executes background tasks.
 *   **Responsibilities**:
     *   Processing long-running logic (CPU/IO bound).
+    *   **Web Scraping**: Fetching and parsing external websites (`requests` + `BeautifulSoup`).
     *   Updating Job status (RUNNING, SUCCESS, FAILED) in PostgreSQL.
     *   Writing granular progress logs to PostgreSQL.
     *   Handling retries and cancellations.
@@ -115,7 +118,14 @@ app/
 ### Job Cancellation
 1.  Client DELETEs `/tasks/{id}`.
 2.  API revokes the Celery task (terminating the worker process).
-3.  API updates Job status to `CANCELLED` in SQLite.
+3.  API updates Job status to `CANCELLED` in PostgreSQL.
+
+### Web Scraper Flow
+1.  Client submits `task_type: "web_scrape"` with URL.
+2.  Worker fetches URL using `requests` (instrumented with OpenTelemetry).
+3.  Worker parses HTML with `BeautifulSoup`.
+4.  Worker extracts metadata (Title, H1s, Links).
+5.  Worker updates DB with results.
 
 ## Reliability & Fault Tolerance
 

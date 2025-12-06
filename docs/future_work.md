@@ -2,15 +2,11 @@
 
 This document outlines recommended improvements and "Day 2" operations features to take this reference implementation to a fully observable, resilient, and secure enterprise standard.
 
-## 1. Observability (OpenTelemetry)
-*   **Why**: Currently, the system relies on basic logs and the Flower dashboard. In a production distributed system, tracing a request from the API -> Redis -> Worker -> Database is crucial for debugging performance bottlenecks.
-*   **Recommendation**: Integrate **OpenTelemetry** to auto-instrument FastAPI and Celery.
-*   **Goal**: Send traces to a backend like Jaeger, Zipkin, or Azure Monitor to visualize the full request lifecycle.
+## 1. Observability (OpenTelemetry) ✅ **Implemented**
+*   **Status**: Done. API and Worker natively trace requests to Jaeger. `requests` library is also instrumented.
 
-## 2. Resilience Patterns (Circuit Breakers & Retries)
-*   **Why**: Workers often depend on external APIs (e.g., OpenAI, Database) that may experience downtime. Uncontrolled retries can cascade failures.
-*   **Recommendation**: Implement **Tenacity** for exponential backoff retries and a **Circuit Breaker** pattern (e.g., using `pybreaker`).
-*   **Goal**: Build self-healing workers that fail fast when dependencies are down and recover automatically.
+## 2. Resilience Patterns (Circuit Breakers & Retries) ✅ **Implemented**
+*   **Status**: Done. `Tenacity` handles retries, and `pybreaker` is used for the Circuit Breaker pattern in `app/worker.py`.
 
 ## 3. Dead Letter Queues (DLQ) & Handling Failures
 *   **Why**: If a task fails repeatedly (e.g., due to malformed data), it shouldn't be lost or block the queue forever.
