@@ -1,3 +1,7 @@
+"""
+SQLAlchemy Data Models.
+Defines the database schema for Jobs and Logs.
+"""
 from sqlalchemy import Column, String, Integer, DateTime, Text, JSON, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -6,13 +10,20 @@ import datetime
 import enum
 
 class JobStatus(str, enum.Enum):
-    PENDING = "PENDING"
-    RUNNING = "RUNNING"
-    SUCCESS = "SUCCESS"
-    FAILED = "FAILED"
-    CANCELLED = "CANCELLED"
+    """
+    Enum representing the lifecycle states of a background job.
+    """
+    PENDING = "PENDING"     # Created in DB, waiting for worker
+    RUNNING = "RUNNING"     # Worker has picked up the task
+    SUCCESS = "SUCCESS"     # Task completed successfully
+    FAILED = "FAILED"       # Task raised an exception
+    CANCELLED = "CANCELLED" # User cancelled the task
 
 class Job(Base):
+    """
+    Database model for a Background Job.
+    Acts as the single source of truth for task status, inputs, and results.
+    """
     __tablename__ = "jobs"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -28,6 +39,10 @@ class Job(Base):
     logs = relationship("JobLog", back_populates="job", cascade="all, delete-orphan")
 
 class JobLog(Base):
+    """
+    Detailed log entry for a specific job.
+    Used to provide granular progress updates and error details to the user.
+    """
     __tablename__ = "job_logs"
 
     id = Column(Integer, primary_key=True, index=True)
