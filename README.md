@@ -108,7 +108,9 @@ Detailed documentation for specific architectural concerns:
 │   ├── worker/       # Celery Task Logic
 │   └── main.py       # App Entrypoint
 ├── docs/             # Technical Guides
+├── scripts/          # Utility Scripts (Verify, Test, Run)
+│   ├── verify_scraper.py
+│   └── run_dev.py
 ├── docker-compose.yml
-├── verify_persistence.py # E2E Test Script (Vector)
-└── verify_scraper.py     # E2E Test Script (Scraper)
+└── run.py            # Prod Entrypoint
 ```
