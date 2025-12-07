@@ -155,10 +155,8 @@ These are logical errors: a schema violation, a missing file, or a `400 Bad Requ
 *   **Strategy**: **Fail Fast and Quarantine**.
 *   **Mechanism**: Do *not* retry. Move the message immediately to a **Dead Letter Queue (DLQ)**.
 *   **Outcome**: Resources are preserved. The failure is isolated for inspection.
-
-```
-[DIAGRAM PLACEHOLDER — DLQ Lifecycle (Retry → Failure → DLQ → Replay)]
-```
+![DLQ Lifecycle](../images/dlq-lifecycle.png)
+*Figure 2 — Example DLQ Lifecycle (Retry → Failure → DLQ → Replay)*
 
 ### The DLQ Governance Mandate
 A common operational failure is treating the DLQ as a "Trash Bin" where messages go to die. As an architect, you must enforce the rule: **The DLQ is an Engineer's Inbox.**
