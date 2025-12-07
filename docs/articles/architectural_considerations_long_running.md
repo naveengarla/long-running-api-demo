@@ -211,10 +211,8 @@ We must scale based on **Supply** (Queue Depth) and **Demand** (Worker Capacity)
 
 *   **Lag > Target**: Scale Out.
 *   **Lag = 0**: Scale In (potentially to zero).
-
-```
-[DIAGRAM PLACEHOLDER — KEDA Autoscaling Based on Queue Depth]
-```
+![KEDA Autoscaling Based on Queue Depth](../images/keda-autoscaling.png)
+*Figure 3 — Example KEDA Autoscaling Based on Queue Depth: The diagram illustrates how KEDA scales the worker pool based on the depth of the Redis queue. The autoscaler monitors the queue depth and scales the worker pool to maintain a target lag (e.g., 100 messages in the queue). This ensures cost-efficiency by scaling only when there is work in the queue, rather than provisioning for peak load 24/7.*
 
 This ensures cost-efficiency: you pay for compute only when there is work in the queue, rather than provisioning for peak load 24/7.
 
