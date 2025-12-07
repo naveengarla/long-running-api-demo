@@ -100,6 +100,7 @@ In this architecture, the API endpoint no longer performs the heavy lifting. Its
 3.  **Process**: A separate **Worker Service**, decoupled from the HTTP layer, consumes the message and executes the logic.
 4.  **Result**: The Worker writes the final state to a persistent **Data Store**.
 
+![Async Worker Pattern Architecture](../images/async-request-reply.png)
 ```
 [DIAGRAM PLACEHOLDER — Async Worker Pattern Architecture]
 ```
