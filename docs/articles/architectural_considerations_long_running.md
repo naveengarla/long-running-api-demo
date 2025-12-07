@@ -101,9 +101,7 @@ In this architecture, the API endpoint no longer performs the heavy lifting. Its
 4.  **Result**: The Worker writes the final state to a persistent **Data Store**.
 
 ![Async Worker Pattern Architecture](../images/async-request-reply.png)
-```
-[DIAGRAM PLACEHOLDER — Async Worker Pattern Architecture]
-```
+*Figure 1 — Example Async Request-Reply Architecture: The diagram illustrates one possible long-running workload (video transcoding) using an async job queue, background workers, durable job metadata, and a client status polling API. The same pattern applies to any long-running process such as report generation, ETL, AI inference, or bulk uploads.*
 
 ### The "Shock Absorber" Effect
 Beyond solving timeouts, this pattern introduces a critical resilience trait: **Backpressure**.
